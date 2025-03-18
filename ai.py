@@ -6,10 +6,11 @@ import wave
 import keyboard
 import time
 from TTS.api import TTS
+import torch
 
-# Initialize Whisper model (using base model for better performance on i7)
+# Initialize Whisper model (using large model for better accuracy and enabling GPU support)
 def initialize_whisper():
-    return whisper.load_model("base")
+    return whisper.load_model("base", device="cuda")
 
 # Initialize TTS engine
 def initialize_tts():
@@ -18,9 +19,11 @@ def initialize_tts():
 # "tts_models/en/ljspeech/fast_pitch"
 # "tts_models/en/ljspeech/glow-tts"
 # "tts_models/en/jenny/jenny"
-    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", 
-              progress_bar=False)
-    return tts
+   device = "cuda" if torch.cuda.is_available() else "cpu"
+   tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", 
+              progress_bar=False, 
+              gpu=torch.cuda.is_available())
+   return tts
 
 # Print available models for debugging (uncomment if needed)
 def list_available_models():
