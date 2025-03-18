@@ -1,12 +1,11 @@
 import whisper
 import ollama
-import pyttsx3
+import numpy as np
 import pyaudio
 import wave
-import numpy as np
-from datetime import datetime
 import keyboard
 import time
+from TTS.api import TTS
 
 # Initialize Whisper model (using base model for better performance on i7)
 def initialize_whisper():
@@ -14,26 +13,19 @@ def initialize_whisper():
 
 # Initialize TTS engine
 def initialize_tts():
-    engine = pyttsx3.init()
-    voices = engine.getProperty('voices')
-    
-    # Default to the first available voice
-    engine.setProperty('voice', voices[0].id)
-    
-    # Try to find an Indian English voice if available
-    for voice in voices:
-        try:
-            # Some voices might not have proper language tags
-            # so we'll just check the name
-            if "india" in voice.name.lower():
-                engine.setProperty('voice', voice.id)
-                print(f"Selected voice: {voice.name}")
-                break
-        except Exception as e:
-            continue
-    
-    engine.setProperty('rate', 150)
-    return engine
+    # Using a verified model that's known to work
+#  Then try one of these alternative models in initialize_tts():
+# "tts_models/en/ljspeech/fast_pitch"
+# "tts_models/en/ljspeech/glow-tts"
+# "tts_models/en/jenny/jenny"
+    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", 
+              progress_bar=False)
+    return tts
+
+# Print available models for debugging (uncomment if needed)
+def list_available_models():
+    print("Available TTS models:")
+    print(TTS.list_models())
 
 # Record audio function
 def record_audio():
@@ -70,6 +62,8 @@ def record_audio():
 
 def main():
     print("Initializing systems...")
+    # Uncomment next line to see available models
+    # list_available_models()
     whisper_model = initialize_whisper()
     tts_engine = initialize_tts()
     
@@ -88,10 +82,11 @@ def main():
         print(f"You said: {user_text}")
         
         # Get response from Ollama
+        # You are an English teacher. Help the student improve their English by correcting mistakes and suggesting better ways to express themselves.
         response = ollama.chat(model='mistral', messages=[
             {
                 'role': 'system',
-                'content': 'You are an English teacher. Help the student improve their English by correcting mistakes and suggesting better ways to express themselves. Keep responses natural and conversational.'
+                'content': ' Keep responses natural and conversational. provide response  in few sentences. 1-3 max'
             },
             {
                 'role': 'user',
@@ -102,9 +97,16 @@ def main():
         ai_response = response['message']['content']
         print(f"AI: {ai_response}")
         
-        # Convert response to speech
-        tts_engine.say(ai_response)
-        tts_engine.runAndWait()
+        # Convert response to speech using Coqui TTS
+        tts_engine.tts_to_file(text=ai_response, 
+                              file_path="response.wav")
+        
+        # Play the generated audio
+        import soundfile as sf
+        import sounddevice as sd
+        audio_data, samplerate = sf.read("response.wav")
+        sd.play(audio_data, samplerate)
+        sd.wait()
         
         time.sleep(0.5)
 
